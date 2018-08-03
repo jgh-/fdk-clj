@@ -4,12 +4,16 @@
             [clj-time.core :as t]
             [fdk-clj.core :refer :all]))
 
+
+;;
+;; timeout function
 (deftest timeout-cancel
   (let [f (future (Thread/sleep 1000))
        v (deref f 100 :timeout)]
        (is (= v :timeout))
        (is (= (timeout f) { :status 408 }))
        (is (future-cancelled? f))))
+
 
 
 (defonce test-env
@@ -21,6 +25,10 @@
     :config { :ok "ok" }
   })
 
+
+;;
+;;
+;; format-cloudevent
 (deftest fmt-cloudevent
   (with-redefs [env test-env]
     (let [v {
@@ -40,6 +48,9 @@
     r (format-cloudevent v)]
     (is (= r e)))))
 
+;;
+;;
+;; format-json
 (deftest fmt-json
   (with-redefs [env test-env]
     (let [v {
@@ -59,6 +70,10 @@
     r (format-json v)]
     (is (= r e)))))
 
+;;
+;;
+;;
+;; handle-result (json)
 (deftest handle-result-json
   (let [v {
     :body { :ok "ok" }
@@ -76,6 +91,10 @@
     r (handle-result v)]
     (is (= r e))))
 
+;;
+;;
+;;
+;; handle result (plaintext)
 (deftest handle-result-plain
   (let [v {
     :body "ok"
@@ -94,6 +113,10 @@
     (is (= r e))))
 
 
+;;
+;;
+;;
+;; handle-request (json)
 (defonce env-json
   {
     :app "app"
@@ -148,6 +171,10 @@
       }]
     (is (= r e)))))
 
+;;
+;;
+;;
+;; handle-request (cloudevent)
 (defonce env-cloudevent
   {
     :app "app"
