@@ -30,7 +30,7 @@
 ;   [optional] :cloudevent { event map } ;; only applies to CloudEvent Format
 ; }
 ;
-(defn run [func-entrypoint]
+(defn handle [func-entrypoint]
   (let [rdr (clojure.java.io/reader *in*)]
     (doseq [line (line-seq rdr)]
       (let [inp (parse-string line true)
