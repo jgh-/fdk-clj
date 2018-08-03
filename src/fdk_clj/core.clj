@@ -55,14 +55,14 @@
   })
 
 
-(defn handle-result [fn-res]
+(defn handle-result [res]
   (merge-with into {
-    :content_type (if (string? (:body fn-res)) "text/plain" "application/json")
+    :content_type (if (string? (:body res)) "text/plain" "application/json")
     :protocol {
-        :status_code (:status fn-res)
+        :status_code (:status res)
     }
-    :body (if (string? (:body fn-res)) (:body fn-res) (generate-string (:body fn-res) {:escape-non-ascii true}))
-  } (if-not (nil? (:headers fn-res)) { :protocol { :headers (:headers fn-res) } })))
+    :body (if (string? (:body res)) (:body res) (generate-string (:body res) {:escape-non-ascii true}))
+  } (if-not (nil? (:headers res)) { :protocol { :headers (:headers res) } })))
 
 ;
 ;
@@ -101,14 +101,15 @@
                           :request_url (str "http://localhost:8080/" (:app env) "/" (:path env))
                         })
         request (merge {
-      :config (:config env)
-      :app (:app env)
-      :path (:path env)
-      :method (get protocol :method "GET")
-      :headers (get protocol :headers {})
-      :request_url (get protocol :request_url "")
-    } (cond (= (:fmt env) "json") (format-json req)
-            (= (:fmt env) "cloudevent") (format-cloudevent req)
-            :else (throw (AssertionError. "'json' and 'cloudevent' are the only supported formats"))))]
-    (let [fx (future (fn-entrypoint request))]
-          (deref fx (t/in-millis (t/interval (t/now) (f/parse (-> request :deadline)))) (timeout fx)))))
+            :config (:config env)
+            :app (:app env)
+            :path (:path env)
+            :method (get protocol :method "GET")
+            :headers (get protocol :headers {})
+            :request_url (get protocol :request_url "")
+          }
+          (cond (= (:fmt env) "json") (format-json req)
+              (= (:fmt env) "cloudevent") (format-cloudevent req)
+              :else (throw (AssertionError. "'json' and 'cloudevent' are the only supported formats"))))
+        fx (future (fn-entrypoint request))]
+          (deref fx (t/in-millis (t/interval (t/now) (f/parse (-> request :deadline)))) (timeout fx))))
