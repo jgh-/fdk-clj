@@ -37,17 +37,6 @@
             res (handle-result (handle-request inp func-entrypoint))]
         (println (generate-string res))))))
 
-(defn handle-result [fn-res]
-  (merge-with into {
-    :content_type (if (string? (:body fn-res)) "text/plain" "application/json")
-    :protocol {
-        :status_code (:status fn-res)
-    }
-    :body (if (string? (:body fn-res)) (:body fn-res) (generate-string (:body fn-res) {:escape-non-ascii true}))
-  } (if-not (nil? (:headers fn-res)) { :protocol { :headers (:headers fn-res) } })))
-
-
-
 ;
 ;
 ;
@@ -64,6 +53,16 @@
     :execution-type (System/getenv "FN_TYPE")
     :config (System/getenv)
   })
+
+
+(defn handle-result [fn-res]
+  (merge-with into {
+    :content_type (if (string? (:body fn-res)) "text/plain" "application/json")
+    :protocol {
+        :status_code (:status fn-res)
+    }
+    :body (if (string? (:body fn-res)) (:body fn-res) (generate-string (:body fn-res) {:escape-non-ascii true}))
+  } (if-not (nil? (:headers fn-res)) { :protocol { :headers (:headers fn-res) } })))
 
 ;
 ;
