@@ -4,7 +4,7 @@
 
 #### Installation
 
-Add `[unpause/fdk-clj "1.0.0-SNAPSHOT"]` to your dependencies.
+Add `[unpause/fdk-clj "1.0.0"]` to your dependencies.
 
 
 #### Usage
