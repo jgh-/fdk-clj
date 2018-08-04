@@ -35,7 +35,6 @@ Create a `main` function like so:
    :content_type "application/json"
    :deadline "2018-01-01T23:59:59.999"
    :call_id "id"
-   :execution_type "sync"
    :app "app"
    :path "func"
    :method "GET"

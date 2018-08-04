@@ -21,7 +21,6 @@
     :app "app"
     :path "test/test"
     :fmt "json"
-    :execution-type "async"
     :config { :ok "ok" }
   })
 
@@ -44,7 +43,6 @@
         :call_id 1
         :content_type "text/plain"
         :deadline "1"
-        :execution_type "async"
         :data "hi"
         :cloudevent v
     }
@@ -67,7 +65,6 @@
         :call_id 1
         :content_type "text/plain"
         :deadline "1"
-        :execution_type "async"
         :data "hi"
         :method "GET" 
         :headers {}
@@ -130,7 +127,6 @@
     :app "app"
     :path "test/test"
     :fmt "json"
-    :execution-type "sync"
     :config { :ok "ok" }
   })
 
@@ -147,7 +143,6 @@
         :call_id 1
         :content_type "text/plain"
         :deadline deadline
-        :execution_type "sync"
         :data "hi"
     }]
     (is (= e req))
@@ -188,7 +183,6 @@
     :app "app"
     :path "test/test"
     :fmt "cloudevent"
-    :execution-type "sync"
     :config { :ok "ok" }
   })
 
@@ -203,7 +197,6 @@
         :call_id 1
         :content_type "text/plain"
         :deadline deadline
-        :execution_type "sync"
         :data "hi"
         :cloudevent {
             :eventID 1

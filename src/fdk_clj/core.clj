@@ -50,7 +50,6 @@
     :app (System/getenv "FN_APP_NAME")
     :path (System/getenv "FN_PATH")
     :fmt (System/getenv "FN_FORMAT")
-    :execution-type (System/getenv "FN_TYPE")
     :config (System/getenv)
   })
 
@@ -90,7 +89,6 @@
     :call_id (-> req :eventID)
     :content_type (get req :contentType "application/cloudevents+json")
     :deadline (-> (req :extensions) :deadline)
-    :execution_type (-> env :execution-type)
     :data (get req :data {})
     :cloudevent req
     :method (get (-> (req :extensions) :protocol) :method "GET")
@@ -103,7 +101,6 @@
     :call_id (-> req :call_id)
     :content_type (get req :content_type "application/json")
     :deadline (-> req :deadline)
-    :execution_type (get req :fn-type "sync")
     :data (get req :data {})
     :method (get (-> req :protocol) :method "GET")
     :headers (get (-> req :protocol) :headers {})
