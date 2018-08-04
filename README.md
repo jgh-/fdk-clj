@@ -11,7 +11,7 @@ The Fn project is an open-source container-native serverless platform that you c
 
 #### Installation
 
-Add `[unpause/fdk-clj "1.0.1"]` to your dependencies.
+Add `[unpause/fdk-clj "1.0.2"]` to your dependencies.
 
 
 #### Usage
@@ -22,15 +22,20 @@ Create an function handler to be called when a new request is made:
 
 ```
 (defn handler [context data]
+  "hey")
+```
+
+Or if you prefer to return a different format or add headers:
+```
+(defn handler [context data]
   ; stuff
-  {
+  (fdk/raw-response {
     :status 200
     :body "blah"
     :content_type "text/plain"
     :headers {
       "X-Something-Different" "Yep"
-    }
-  })
+    }}))
 ```
 
 Create a `main` function like so:

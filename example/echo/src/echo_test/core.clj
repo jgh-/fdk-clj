@@ -5,8 +5,8 @@
 (defn handler [context data]
   {
     :status 200
-    :body body
-    :content_type (:content_type context)
+    :body "hello world"
+    :content_type "text/plain"
     :headers { "X-Request-Is-Fancy" "Very" }
   })
 
