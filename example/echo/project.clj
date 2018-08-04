@@ -6,4 +6,5 @@
   :dependencies [[org.clojure/clojure "1.9.0"]
                 [unpause/fdk-clj "1.0.1"]]
   :main echo-test.core
+  :jvm-opts ["-Duser.timezone=UTC"]
   :profiles {:uberjar { :aot :all }})

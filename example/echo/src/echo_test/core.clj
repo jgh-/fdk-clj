@@ -2,12 +2,13 @@
   (:require [fdk-clj.core :as fdk])
   (:gen-class))
 
-(defn func [request]
+(defn handler [context data]
   {
     :status 200
-    :body { :echo request }
+    :body body
+    :content_type (:content_type context)
     :headers { "X-Request-Is-Fancy" "Very" }
   })
 
 (defn -main [& args]
-  (fdk/handle func))
+  (fdk/handle handler))

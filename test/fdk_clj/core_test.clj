@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [extend second])
   (:require [clojure.test :refer :all]
             [clj-time.core :as t]
+            [clj-time.format :as f]
             [fdk-clj.core :refer :all]))
 
 
@@ -27,6 +28,7 @@
     :app "app"
     :path "test/test"
     :fmt "json"
+    :type "sync"
     :config { :ok "ok" }
   })
 
@@ -42,13 +44,11 @@
         :data "hi"
     }
     e {
-        :method "GET"
         :request_url "http://localhost:8080/r/app/test/test" 
         :headers {}
         :call_id 1
         :content_type "text/plain"
         :deadline "1"
-        :data "hi"
         :cloudevent v
     }
     r (format-cloudevent v)]
@@ -70,8 +70,6 @@
         :call_id 1
         :content_type "text/plain"
         :deadline "1"
-        :data "hi"
-        :method "GET" 
         :headers {}
         :request_url "http://localhost:8080/r/app/test/test"
     }
@@ -108,6 +106,7 @@
   (with-redefs [env test-env]
     (let [v { :result {
       :body "ok"
+      :content_type "text/plain"
       :status 202
       :headers { :ok ["ok"] }
       } }
@@ -132,28 +131,32 @@
     :app "app"
     :path "test/test"
     :fmt "json"
+    :type "sync"
     :config { :ok "ok" }
   })
 
-(defonce deadline (t/plus (t/now) (t/minutes 10)))
+(defonce deadline (f/unparse (f/formatters :date-time) (t/plus (t/now) (t/minutes 10))))
 
-(defn handle-request-entrypoint-json [req]
+(defn handle-request-entrypoint-json [ctx body]
   (let [e {
         :config { :ok "ok" }
-        :app "app"
-        :path "test/test"
-        :method "PUT"
+        :app_name "app"
+        :app_route "test/test"
+        :fn_format "json"
+        :execution_type "sync"
+        :arguments {}
         :headers { :ok ["ok"] }
         :request_url "http://test.com/r/app/test/test"
         :call_id 1
         :content_type "text/plain"
         :deadline deadline
-        :data "hi"
     }]
-    (is (= e req))
+    (is (= e ctx))
+    (is (= "hi" body))
     {
+        :content_type "text/plain"
         :status 202
-        :body { :ok "ok" }
+        :body "ok"
         :headers { :h "h" }
     }))
 
@@ -174,7 +177,8 @@
     r (handle-request v handle-request-entrypoint-json)
     e { :result {
       :status 202
-      :body { :ok "ok" }
+      :body "ok"
+      :content_type "text/plain"
       :headers { :h "h" }
       } :request v }]
     (is (= r e)))))
@@ -188,21 +192,23 @@
     :app "app"
     :path "test/test"
     :fmt "cloudevent"
+    :type "sync"
     :config { :ok "ok" }
   })
 
-(defn handle-request-entrypoint-cloudevent [req]
+(defn handle-request-entrypoint-cloudevent [ctx body]
   (let [e {
         :config { :ok "ok" }
-        :app "app"
-        :path "test/test"
-        :method "PUT"
+        :app_name "app"
+        :app_route "test/test"
+        :fn_format "cloudevent"
+        :execution_type "sync"
+        :arguments {}
         :headers { :ok ["ok"] }
         :request_url "http://test.com/r/app/test/test"
         :call_id 1
         :content_type "text/plain"
         :deadline deadline
-        :data "hi"
         :cloudevent {
             :eventID 1
             :contentType "text/plain"
@@ -216,7 +222,8 @@
             :data "hi"
         }
     }]
-    (is (= e req))
+    (is (= e ctx))
+    (is (= "hi" body))
     {
         :status 202
         :body { :ok "ok" }
@@ -229,12 +236,13 @@
         :eventID 1
         :contentType "text/plain"
         :extensions { 
-        :protocol {
-              :method "PUT"
-              :headers { :ok ["ok"] }
-              :request_url "http://test.com/r/app/test/test"
+          :deadline deadline
+          :protocol {
+                :method "PUT"
+                :headers { :ok ["ok"] }
+                :request_url "http://test.com/r/app/test/test"
           }
-          :deadline deadline }
+        }
         :data "hi"
     }
     r (handle-request v handle-request-entrypoint-cloudevent)
@@ -288,12 +296,12 @@
 ;;
 ;;
 ;; handle result exception
-(defn handle-request-entrypoint-exception [ctx]
+(defn handle-request-entrypoint-exception [ctx body]
   (/ 1 0))
 
 (deftest handle-result-exception
   (with-redefs [env env-cloudevent]
-    (let [r (handle-result (handle-request {} handle-request-entrypoint-exception))
+    (let [r (handle-result (handle-request { :extensions { :deadline deadline } } handle-request-entrypoint-exception))
           e { :contentType "application/json" 
               :data {}
               :extensions {

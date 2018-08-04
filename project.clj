@@ -1,4 +1,4 @@
-(defproject unpause/fdk-clj "1.0.1"
+(defproject unpause/fdk-clj "1.0.2"
   :description "Clojure FDK for Fn"
   :url "https://github.com/unpause-live/fdk-clj"
   :license {:name "Apache License Version 2.0"
@@ -7,4 +7,5 @@
                 [cheshire "5.8.0"]
                 [clj-time "0.14.4"]
                 [org.clojure/test.check "0.9.0"]]
+  :jvm-opts ["-Duser.timezone=UTC"]
   :test-paths ["test"])

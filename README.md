@@ -21,10 +21,15 @@ Add `[fdk-clj.core :as fdk]` to the requirements list where your function's `mai
 Create an function handler to be called when a new request is made:
 
 ```
-(defn func-entrypoint [request]
+(defn handler [context data]
   ; stuff
   {
     :status 200
+    :body "blah"
+    :content_type "text/plain"
+    :headers {
+      "X-Something-Different" "Yep"
+    }
   })
 ```
 
@@ -32,23 +37,24 @@ Create a `main` function like so:
 
 ```
 (defn -main [& args]
-  (fdk/handle func-entrypoint))
+  (fdk/handle handler))
 ```
 
-#### Request format
+#### Context format
 
 ```
  {
-   :config { "FN_APP_NAME" "app" "FN_PATH" "func" ... env variables ... }
-   :content_type "application/json"
-   :deadline "2018-01-01T23:59:59.999"
+   :app_name "app"
+   :app_route "/func"
    :call_id "id"
-   :app "app"
-   :path "/func"
-   :method "GET"
-   :headers { http headers}
+   :config { "FN_APP_NAME" "app" "FN_PATH" "func" ... env variables ... }
+   :headers { http headers }
+   :arguments {}
+   :fn_format "cloudevent"
+   :execution_type "sync"
+   :deadline "2018-01-01T23:59:59.999"
+   :content_type "application/json"
    :request_url "http://domain.com/r/app/func"
-   :data "body data"
    [optional] :cloudevent { event map } ;; only applies to CloudEvent Format
  }
 ```

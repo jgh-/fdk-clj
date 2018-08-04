@@ -16,17 +16,17 @@
 ; request comes in.
 ; That function must take a single argument which is a map with the following layout:
 ; {
-;   :config { "FN_APP_NAME" "app" "FN_PATH" "func" ... env variables ... }
-;   :content_type "application/json"
-;   :deadline "2018-01-01T23:59:59.999"
+;   :app_name "app"
+;   :app_route "/func"
 ;   :call_id "id"
+;   :config { "FN_APP_NAME" "app" "FN_PATH" "func" ... env variables ... }
+;   :headers { http headers }
+;   :arguments {}
+;   :fn_format "cloudevent"
 ;   :execution_type "sync"
-;   :app "app"
-;   :path "func"
-;   :method "GET"
-;   :headers { http headers}
+;   :deadline "2018-01-01T23:59:59.999"
+;   :content_type "application/json"
 ;   :request_url "http://domain.com/r/app/func"
-;   :data "body data"
 ;   [optional] :cloudevent { event map } ;; only applies to CloudEvent Format
 ; }
 ;
@@ -50,6 +50,7 @@
     :app (System/getenv "FN_APP_NAME")
     :path (System/getenv "FN_PATH")
     :fmt (System/getenv "FN_FORMAT")
+    :type (System/getenv "FN_TYPE")
     :config (System/getenv)
   })
 
@@ -58,21 +59,22 @@
 
 (defn result-cloudevent [ctx]
   (merge (:cloudevent (:request ctx)) {
-    :contentType (if (string? (:body (:result ctx))) "text/plain" "application/json")
+    :contentType (get (:result ctx) :content_type "application/json")
     :data (get (:result ctx) :body {})
     :extensions {
       :protocol {
-        :status_code (:status (:result ctx))
+        :status_code (get (:result ctx) :status 200)
         :headers (gofmt-headers (-> (ctx :result) :headers))
       }}}))
 
 (defn result-json [ctx]
-  (let [body (:body (:result ctx))]
+  (let [body (:body (:result ctx))
+        content-type (:content_type (:result ctx))]
   {
-    :body (cond (nil? body) "" (string? body) body :else (generate-string body {:escape-non-ascii true}))
-    :content_type (if (string? (:body (:result ctx))) "text/plain" "application/json")
+    :body (if (or (nil? content-type) (= content-type "application/json")) (generate-string body {:escape-non-ascii true}) body)
+    :content_type (get (:result ctx) :content_type "application/json")
     :protocol {
-      :status_code (:status (:result ctx))
+      :status_code (get (:result ctx) :status 200)
       :headers (gofmt-headers (-> (ctx :result) :headers))
     }
   }))
@@ -88,10 +90,8 @@
   {
     :call_id (-> req :eventID)
     :content_type (get req :contentType "application/cloudevents+json")
-    :deadline (-> (req :extensions) :deadline)
-    :data (get req :data {})
     :cloudevent req
-    :method (get (-> (req :extensions) :protocol) :method "GET")
+    :deadline (:deadline (req :extensions))
     :headers (get (-> (req :extensions) :protocol) :headers {})
     :request_url (get (-> (req :extensions) :protocol) :request_url (str "http://localhost:8080/r/" (:app env) "/" (:path env)))
   })
@@ -100,9 +100,7 @@
   {
     :call_id (-> req :call_id)
     :content_type (get req :content_type "application/json")
-    :deadline (-> req :deadline)
-    :data (get req :data {})
-    :method (get (-> req :protocol) :method "GET")
+    :deadline (:deadline req)
     :headers (get (-> req :protocol) :headers {})
     :request_url (get (-> req :protocol) :request_url (str "http://localhost:8080/r/" (:app env) "/" (:path env)))
   })
@@ -114,17 +112,18 @@
   } :request req })
 
 (defn handle-request [req fn-entrypoint]
-  (try 
-    (let [request (merge {
-            :config (:config env)
-            :app (:app env)
-            :path (:path env)
-          }
-          (cond (= (:fmt env) "json") (format-json req)
-                (= (:fmt env) "cloudevent") (format-cloudevent req)
-                :else (throw (AssertionError. "'json' and 'cloudevent' are the only supported formats"))))
-        fx (future (fn-entrypoint request))]
-            { :result (deref fx (t/in-millis (t/interval (t/now) (f/parse (-> request :deadline)))) (timeout fx req)) 
-            :request req })
-    (catch Exception e {:result { :status 500 } :request req}))
-  )
+  (let [ctx (merge {
+          :app_name (:app env)
+          :app_route (:path env)
+          :config (:config env)
+          :fn_format (:fmt env)
+          :execution_type (:type env)
+          :arguments {}
+        }
+        (cond (= (:fmt env) "json") (format-json req)
+              (= (:fmt env) "cloudevent") (format-cloudevent req)
+              :else (throw (AssertionError. "'json' and 'cloudevent' are the only supported formats"))))
+      ms (t/in-millis (t/interval (t/now) (f/parse (:deadline ctx))))
+      fx (future (try (fn-entrypoint ctx (:data req)) (catch Exception e :exception)))
+      res (deref fx ms :timeout)]
+          (if (= res :exception) { :result { :status 500 } :request req } { :result  (if (= res :timeout) (timeout fx req) res) :request req })))
