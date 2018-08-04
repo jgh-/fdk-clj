@@ -15,6 +15,12 @@
        (is (future-cancelled? f))))
 
 
+(deftest gofmt-headers-test
+  (is (= (gofmt-headers { :h1 "h1"}) { :h1 ["h1"]}))
+  (is (= (gofmt-headers { :h1 ["h1"]}) { :h1 ["h1"]}))
+  (is (= (gofmt-headers { :h1 "h1" :h2 "h2"}) { :h1 ["h1"] :h2 ["h2"] }))
+  (is (= (gofmt-headers { :h1 ["h1"] :h2 ["h2"]}) { :h1 ["h1"] :h2 ["h2"] }))
+  (is (= (gofmt-headers { "X-Different-Header" "h1" }) { "X-Different-Header" ["h1"]})))
 
 (defonce test-env
   {
@@ -23,7 +29,6 @@
     :fmt "json"
     :config { :ok "ok" }
   })
-
 
 ;;
 ;;
@@ -82,14 +87,14 @@
     (let [v { :result {
       :body { :ok "ok" }
       :status 202
-      :headers { :ok "ok" }
+      :headers { :ok ["ok"] }
       } }
       e {
         :content_type "application/json"
         :body "{\"ok\":\"ok\"}"
         :protocol {
           :status_code 202
-          :headers { :ok "ok" }
+          :headers { :ok ["ok"] }
         }
       }
       r (handle-result v)]
@@ -104,14 +109,14 @@
     (let [v { :result {
       :body "ok"
       :status 202
-      :headers { :ok "ok" }
+      :headers { :ok ["ok"] }
       } }
       e {
         :content_type "text/plain"
         :body "ok"
         :protocol {
           :status_code 202
-          :headers { :ok "ok" }
+          :headers { :ok ["ok"] }
         }
       }
       r (handle-result v)]
@@ -138,7 +143,7 @@
         :app "app"
         :path "test/test"
         :method "PUT"
-        :headers { :ok "ok" }
+        :headers { :ok ["ok"] }
         :request_url "http://test.com/r/app/test/test"
         :call_id 1
         :content_type "text/plain"
@@ -157,7 +162,7 @@
     (let [v {
         :protocol {
             :method "PUT"
-            :headers { :ok "ok" }
+            :headers { :ok ["ok"] }
             :request_url "http://test.com/r/app/test/test"
         }
         :call_id 1
@@ -192,7 +197,7 @@
         :app "app"
         :path "test/test"
         :method "PUT"
-        :headers { :ok "ok" }
+        :headers { :ok ["ok"] }
         :request_url "http://test.com/r/app/test/test"
         :call_id 1
         :content_type "text/plain"
@@ -205,7 +210,7 @@
               :deadline deadline 
               :protocol {
                 :method "PUT"
-                :headers { :ok "ok" }
+                :headers { :ok ["ok"] }
                 :request_url "http://test.com/r/app/test/test"
             }}
             :data "hi"
@@ -226,7 +231,7 @@
         :extensions { 
         :protocol {
               :method "PUT"
-              :headers { :ok "ok" }
+              :headers { :ok ["ok"] }
               :request_url "http://test.com/r/app/test/test"
           }
           :deadline deadline }
@@ -258,7 +263,7 @@
               :deadline deadline 
               :protocol {
                 :method "PUT"
-                :headers { :ok "ok" }
+                :headers { :ok ["ok"] }
                 :request_url "http://test.com/r/app/test/test"
             }}
             :data "hi"
@@ -267,11 +272,11 @@
       e {
         :eventID 1
         :contentType "application/json"
-        :data "{\"ok\":\"ok\"}"
+        :data { :ok "ok" }
         :extensions {
           :protocol {
             :status_code 202
-            :headers { :ok "ok" }
+            :headers { :ok ["ok"] }
           }
         }
       }
@@ -290,7 +295,7 @@
   (with-redefs [env env-cloudevent]
     (let [r (handle-result (handle-request {} handle-request-entrypoint-exception))
           e { :contentType "application/json" 
-              :data "{}"
+              :data {}
               :extensions {
                 :protocol {
                   :status_code 500

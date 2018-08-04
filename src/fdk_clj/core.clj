@@ -34,7 +34,7 @@
   (let [rdr (clojure.java.io/reader *in*)]
     (doseq [line (line-seq rdr)]
       (let [inp (parse-string line true)
-            res (apply handle-result (handle-request inp func-entrypoint))]
+            res (handle-result (handle-request inp func-entrypoint))]
         (println (generate-string res))))))
 
 ;
@@ -53,32 +53,32 @@
     :config (System/getenv)
   })
 
-(defn result-cloudevent [ctx body-string]
+(defn gofmt-headers [headers]
+  (reduce-kv (fn [a k v] (conj a { k (into [] (flatten [v])) })) {} headers))
+
+(defn result-cloudevent [ctx]
   (merge (:cloudevent (:request ctx)) {
     :contentType (if (string? (:body (:result ctx))) "text/plain" "application/json")
-    :data body-string
+    :data (get (:result ctx) :body {})
     :extensions {
       :protocol {
         :status_code (:status (:result ctx))
-        :headers (get (:result ctx) :headers {})
+        :headers (gofmt-headers (-> (ctx :result) :headers))
       }}}))
 
-(defn result-json [ctx body-string]
+(defn result-json [ctx]
+  (let [body (:body (:result ctx))]
   {
-    :body body-string
+    :body (cond (nil? body) "" (string? body) body :else (generate-string body {:escape-non-ascii true}))
     :content_type (if (string? (:body (:result ctx))) "text/plain" "application/json")
     :protocol {
       :status_code (:status (:result ctx))
-      :headers (get (:result ctx) :headers {})
+      :headers (gofmt-headers (-> (ctx :result) :headers))
     }
-  })
+  }))
 
 (defn handle-result [ctx]
-  (let [body-string (cond (nil? (:body (:result ctx))) "{}" 
-                          (string? (:body (:result ctx))) (:body (:result ctx))
-                          :else (generate-string (:body (:result ctx)) {:escape-non-ascii true}))]
-    (if (= (:fmt env) "cloudevent") (result-cloudevent ctx body-string) (result-json ctx body-string))))
-
+    (if (= (:fmt env) "cloudevent") (result-cloudevent ctx) (result-json ctx)))
 
 ;
 ;
@@ -126,4 +126,5 @@
         fx (future (fn-entrypoint request))]
             { :result (deref fx (t/in-millis (t/interval (t/now) (f/parse (-> request :deadline)))) (timeout fx req)) 
             :request req })
-    (catch Exception e {:result { :status 500 } :request req})))
+    (catch Exception e {:result { :status 500 } :request req}))
+  )

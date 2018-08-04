@@ -2,9 +2,16 @@
 
 [![CircleCI](https://circleci.com/gh/unpause-live/fdk-clj/tree/master.svg?style=svg)](https://circleci.com/gh/unpause-live/fdk-clj/tree/master)
 
+#### About Fn
+
+https://fnproject.io
+
+The Fn project is an open-source container-native serverless platform that you can run anywhere -- any cloud or on-premise. It’s easy to use, supports every programming language, and is extensible and performant.
+
+
 #### Installation
 
-Add `[unpause/fdk-clj "1.0.0"]` to your dependencies.
+Add `[unpause/fdk-clj "1.0.1"]` to your dependencies.
 
 
 #### Usage
@@ -47,3 +54,7 @@ Create a `main` function like so:
 ```
 
 Requests that go beyoned `deadline` will be forcefully killed.
+
+#### GraalVM
+
+For fast cold-start times you should use GraalVM's Native Image with FROM SCRATCH for the docker image.

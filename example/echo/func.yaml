@@ -1,0 +1,6 @@
+name: fdk-clj/echo-test
+version: 0.0.2
+runtime: docker
+build:
+- lein clean && lein uberjar
+format: cloudevent
