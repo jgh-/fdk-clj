@@ -32,8 +32,8 @@ Or if you prefer to return a different format or add headers:
   (fdk/raw-response {
     :status 200
     :body "blah"
-    :content_type "text/plain"
     :headers {
+      :content-type "text/plain"
       "X-Something-Different" "Yep"
     }}))
 ```
