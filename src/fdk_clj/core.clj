@@ -34,7 +34,7 @@
   (let [rdr (clojure.java.io/reader *in*)]
     (doseq [line (line-seq rdr)]
       (let [inp (parse-string line true)
-            res (handle-result (handle-request inp func-entrypoint))]
+            res (apply handle-result (handle-request inp func-entrypoint))]
         (println (generate-string res))))))
 
 ;
@@ -54,15 +54,32 @@
     :config (System/getenv)
   })
 
+(defn result-cloudevent [ctx body-string]
+  (merge (:cloudevent (:request ctx)) {
+    :contentType (if (string? (:body (:result ctx))) "text/plain" "application/json")
+    :data body-string
+    :extensions {
+      :protocol {
+        :status_code (:status (:result ctx))
+        :headers (get (:result ctx) :headers {})
+      }}}))
 
-(defn handle-result [res]
-  (merge-with into {
-    :content_type (if (string? (:body res)) "text/plain" "application/json")
+(defn result-json [ctx body-string]
+  {
+    :body body-string
+    :content_type (if (string? (:body (:result ctx))) "text/plain" "application/json")
     :protocol {
-        :status_code (:status res)
+      :status_code (:status (:result ctx))
+      :headers (get (:result ctx) :headers {})
     }
-    :body (if (string? (:body res)) (:body res) (generate-string (:body res) {:escape-non-ascii true}))
-  } (if-not (nil? (:headers res)) { :protocol { :headers (:headers res) } })))
+  })
+
+(defn handle-result [ctx]
+  (let [body-string (cond (nil? (:body (:result ctx))) "{}" 
+                          (string? (:body (:result ctx))) (:body (:result ctx))
+                          :else (generate-string (:body (:result ctx)) {:escape-non-ascii true}))]
+    (if (= (:fmt env) "cloudevent") (result-cloudevent ctx body-string) (result-json ctx body-string))))
+
 
 ;
 ;
@@ -76,6 +93,9 @@
     :execution_type (-> env :execution-type)
     :data (get req :data {})
     :cloudevent req
+    :method (get (-> (req :extensions) :protocol) :method "GET")
+    :headers (get (-> (req :extensions) :protocol) :headers {})
+    :request_url (get (-> (req :extensions) :protocol) :request_url (str "http://localhost:8080/r/" (:app env) "/" (:path env)))
   })
 
 (defn format-json [req]
@@ -85,31 +105,28 @@
     :deadline (-> req :deadline)
     :execution_type (get req :fn-type "sync")
     :data (get req :data {})
+    :method (get (-> req :protocol) :method "GET")
+    :headers (get (-> req :protocol) :headers {})
+    :request_url (get (-> req :protocol) :request_url (str "http://localhost:8080/r/" (:app env) "/" (:path env)))
   })
 
-(defn timeout [fx]
+(defn timeout [fx req]
   (future-cancel fx)
-  {
+  { :result {
     :status 408
-  })
+  } :request req })
 
 (defn handle-request [req fn-entrypoint]
-  (let [protocol (get req :protocol {
-                          :headers {}
-                          :type "http"
-                          :method "GET"
-                          :request_url (str "http://localhost:8080/" (:app env) "/" (:path env))
-                        })
-        request (merge {
+  (try 
+    (let [request (merge {
             :config (:config env)
             :app (:app env)
             :path (:path env)
-            :method (get protocol :method "GET")
-            :headers (get protocol :headers {})
-            :request_url (get protocol :request_url "")
           }
           (cond (= (:fmt env) "json") (format-json req)
-              (= (:fmt env) "cloudevent") (format-cloudevent req)
-              :else (throw (AssertionError. "'json' and 'cloudevent' are the only supported formats"))))
+                (= (:fmt env) "cloudevent") (format-cloudevent req)
+                :else (throw (AssertionError. "'json' and 'cloudevent' are the only supported formats"))))
         fx (future (fn-entrypoint request))]
-          (deref fx (t/in-millis (t/interval (t/now) (f/parse (-> request :deadline)))) (timeout fx))))
+            { :result (deref fx (t/in-millis (t/interval (t/now) (f/parse (-> request :deadline)))) (timeout fx req)) 
+            :request req })
+    (catch Exception e {:result { :status 500 } :request req})))

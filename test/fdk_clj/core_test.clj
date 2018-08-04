@@ -11,7 +11,7 @@
   (let [f (future (Thread/sleep 1000))
        v (deref f 100 :timeout)]
        (is (= v :timeout))
-       (is (= (timeout f) { :status 408 }))
+       (is (= (timeout f {}) { :result { :status 408 } :request {}}))
        (is (future-cancelled? f))))
 
 
@@ -20,7 +20,7 @@
   {
     :app "app"
     :path "test/test"
-    :fmt "test"
+    :fmt "json"
     :execution-type "async"
     :config { :ok "ok" }
   })
@@ -38,6 +38,9 @@
         :data "hi"
     }
     e {
+        :method "GET"
+        :request_url "http://localhost:8080/r/app/test/test" 
+        :headers {}
         :call_id 1
         :content_type "text/plain"
         :deadline "1"
@@ -66,6 +69,9 @@
         :deadline "1"
         :execution_type "async"
         :data "hi"
+        :method "GET" 
+        :headers {}
+        :request_url "http://localhost:8080/r/app/test/test"
     }
     r (format-json v)]
     (is (= r e)))))
@@ -75,42 +81,44 @@
 ;;
 ;; handle-result (json)
 (deftest handle-result-json
-  (let [v {
-    :body { :ok "ok" }
-    :status 202
-    :headers { :ok "ok" }
-    }
-    e {
-      :content_type "application/json"
-      :body "{\"ok\":\"ok\"}"
-      :protocol {
-        :status_code 202
-        :headers { :ok "ok" }
+  (with-redefs [env test-env]
+    (let [v { :result {
+      :body { :ok "ok" }
+      :status 202
+      :headers { :ok "ok" }
+      } }
+      e {
+        :content_type "application/json"
+        :body "{\"ok\":\"ok\"}"
+        :protocol {
+          :status_code 202
+          :headers { :ok "ok" }
+        }
       }
-    }
-    r (handle-result v)]
-    (is (= r e))))
+      r (handle-result v)]
+      (is (= r e)))))
 
 ;;
 ;;
 ;;
 ;; handle result (plaintext)
 (deftest handle-result-plain
-  (let [v {
-    :body "ok"
-    :status 202
-    :headers { :ok "ok" }
-    }
-    e {
-      :content_type "text/plain"
+  (with-redefs [env test-env]
+    (let [v { :result {
       :body "ok"
-      :protocol {
-        :status_code 202
-        :headers { :ok "ok" }
+      :status 202
+      :headers { :ok "ok" }
+      } }
+      e {
+        :content_type "text/plain"
+        :body "ok"
+        :protocol {
+          :status_code 202
+          :headers { :ok "ok" }
+        }
       }
-    }
-    r (handle-result v)]
-    (is (= r e))))
+      r (handle-result v)]
+      (is (= r e)))))
 
 
 ;;
@@ -164,11 +172,11 @@
         :data "hi"
     }
     r (handle-request v handle-request-entrypoint-json)
-    e {
+    e { :result {
       :status 202
       :body { :ok "ok" }
       :headers { :h "h" }
-      }]
+      } :request v }]
     (is (= r e)))))
 
 ;;
@@ -198,14 +206,15 @@
         :execution_type "sync"
         :data "hi"
         :cloudevent {
-            :protocol {
+            :eventID 1
+            :contentType "text/plain"
+            :extensions {
+              :deadline deadline 
+              :protocol {
                 :method "PUT"
                 :headers { :ok "ok" }
                 :request_url "http://test.com/r/app/test/test"
-            }
-            :eventID 1
-            :contentType "text/plain"
-            :extensions {:deadline deadline }
+            }}
             :data "hi"
         }
     }]
@@ -219,20 +228,79 @@
 (deftest handle-request-cloudevent
   (with-redefs [env env-cloudevent]
     (let [v {
-        :protocol {
-            :method "PUT"
-            :headers { :ok "ok" }
-            :request_url "http://test.com/r/app/test/test"
-        }
         :eventID 1
         :contentType "text/plain"
-        :extensions {:deadline deadline }
+        :extensions { 
+        :protocol {
+              :method "PUT"
+              :headers { :ok "ok" }
+              :request_url "http://test.com/r/app/test/test"
+          }
+          :deadline deadline }
         :data "hi"
     }
     r (handle-request v handle-request-entrypoint-cloudevent)
-    e {
+    e { :result {
       :status 202
       :body { :ok "ok" }
       :headers { :h "h" }
-      }]
+      } :request v }]
     (is (= r e)))))
+
+;;
+;;
+;;
+;; handle-result (json, using cloudevent)
+(deftest handle-result-json-ce
+  (with-redefs [env env-cloudevent]
+    (let [v { :result {
+      :body { :ok "ok" }
+      :status 202
+      :headers { :ok "ok" }
+      } :request {
+          :cloudevent {
+            :eventID 1
+            :contentType "text/plain"
+            :extensions {
+              :deadline deadline 
+              :protocol {
+                :method "PUT"
+                :headers { :ok "ok" }
+                :request_url "http://test.com/r/app/test/test"
+            }}
+            :data "hi"
+        }
+      }}
+      e {
+        :eventID 1
+        :contentType "application/json"
+        :data "{\"ok\":\"ok\"}"
+        :extensions {
+          :protocol {
+            :status_code 202
+            :headers { :ok "ok" }
+          }
+        }
+      }
+      r (handle-result v)]
+      (is (= r e)))))
+
+
+;;
+;;
+;;
+;; handle result exception
+(defn handle-request-entrypoint-exception [ctx]
+  (/ 1 0))
+
+(deftest handle-result-exception
+  (with-redefs [env env-cloudevent]
+    (let [r (handle-result (handle-request {} handle-request-entrypoint-exception))
+          e { :contentType "application/json" 
+              :data "{}"
+              :extensions {
+                :protocol {
+                  :status_code 500
+                  :headers {}
+                  }}}]
+      (is (= r e)))))
