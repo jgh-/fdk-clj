@@ -44,7 +44,7 @@ Create a `main` function like so:
    :deadline "2018-01-01T23:59:59.999"
    :call_id "id"
    :app "app"
-   :path "func"
+   :path "/func"
    :method "GET"
    :headers { http headers}
    :request_url "http://domain.com/r/app/func"
@@ -57,4 +57,4 @@ Requests that go beyoned `deadline` will be forcefully killed.
 
 #### GraalVM
 
-For fast cold-start times you should use GraalVM's Native Image with FROM SCRATCH for the docker image.
+For fast(er) cold-start times you should use GraalVM's Native Image with FROM SCRATCH for the docker image.
