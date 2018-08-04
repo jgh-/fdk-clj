@@ -24,7 +24,7 @@ Create a `main` function like so:
 
 ```
 (defn -main [& args]
-  (handle func-entrypoint))
+  (fdk/handle func-entrypoint))
 ```
 
 #### Request format
