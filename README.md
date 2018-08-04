@@ -1,5 +1,6 @@
 ### Fn FDK for Clojure
 
+[![CircleCI](https://circleci.com/gh/unpause-live/fdk-clj/tree/master.svg?style=svg)](https://circleci.com/gh/unpause-live/fdk-clj/tree/master)
 
 #### Installation
 
