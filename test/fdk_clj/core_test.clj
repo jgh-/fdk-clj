@@ -12,7 +12,7 @@
   (let [f (future (Thread/sleep 1000))
        v (deref f 100 :timeout)]
        (is (= v :timeout))
-       (is (= (timeout f {}) { :result { :status 408 } :request {}}))
+       (is (= (timeout f {}) { :result { :raw-response { :status 408 }} :request {}}))
        (is (future-cancelled? f))))
 
 
@@ -24,7 +24,11 @@
   (is (= (gofmt-headers { "X-Different-Header" "h1" }) { "X-Different-Header" ["h1"]})))
 
 (deftest raw-response-test
-  (is (= { :is_raw true :hi 2 } (raw-response { :hi 2 }))))
+  (is (= {:raw-response { :hi 2 } } (raw-response { :hi 2 }))))
+
+(deftest israw-test
+  (is (= (is-raw? { :raw-response { :hi "ok"}}) true))
+  (is (= (is-raw? { :hi "ok"}) false)))
 
 (defonce test-env
   {
@@ -109,16 +113,17 @@
   (with-redefs [env test-env]
     (let [v { :result (raw-response {
       :body "ok"
-      :content_type "text/plain"
       :status 202
-      :headers { :ok ["ok"] }
+      :headers { 
+        :ok ["ok"] 
+        :content-type "text/plain"}
       }) }
       e {
         :content_type "text/plain"
         :body "ok"
         :protocol {
           :status_code 202
-          :headers { :ok ["ok"] }
+          :headers { :ok ["ok"] :content-type ["text/plain"] }
         }
       }
       r (handle-result v)]
@@ -178,13 +183,12 @@
         :data "hi"
     }
     r (handle-request v handle-request-entrypoint-json)
-    e { :result {
-      :is_raw true
+    e { :result { :raw-response {
       :status 202
       :body "ok"
       :content_type "text/plain"
       :headers { :h "h" }
-      } :request v }]
+      }} :request v }]
     (is (= r e)))))
 
 ;;
@@ -250,12 +254,12 @@
         :data "hi"
     }
     r (handle-request v handle-request-entrypoint-cloudevent)
-    e { :result {
-      :is_raw true
+    e { :result { :raw-response {
+      
       :status 202
       :body { :ok "ok" }
       :headers { :h "h" }
-      } :request v }]
+      } } :request v }]
     (is (= r e)))))
 
 ;;

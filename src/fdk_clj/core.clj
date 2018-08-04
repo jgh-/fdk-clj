@@ -61,7 +61,7 @@
   (reduce-kv (fn [a k v] (conj a { k (into [] (flatten [v])) })) {} headers))
 
 (defn is-raw? [result]
-  (not (nil? (:raw-resonse result))))
+  (not (nil? (:raw-response result))))
 
 (defn get-response [result]
   (:raw-response result))
@@ -73,22 +73,23 @@
   (let [result (:result ctx)]
     (merge (:cloudevent (:request ctx)) {
       :contentType (if (is-raw? result) (get (:headers result) :content-type "application/json") "application/json")
-      :data (or (get-response-data result) {})
+      :data (or (:body (get-response result)) {})
       :extensions {
         :protocol {
           :status_code (if (is-raw? result) (get (get-response result) :status 200) 200)
-          :headers (gofmt-headers (if (is-raw? result) (get (get-response result) :headers {}}) {}}))
+          :headers (gofmt-headers (if (is-raw? result) (get (get-response result) :headers {}) {}))
         }}})))
 
 (defn result-json [ctx]
-  (let [body (if (nil? (:is_raw (:result ctx))) (:result ctx) (:body (:result ctx)))
-        content-type (:content_type (:result ctx))]
+  (let [result (:result ctx)
+        content-type (if (is-raw? result) (get (:headers (get-response result)) :content-type "application/json") "application/json")]
   {
-    :body (if (or (nil? content-type) (= content-type "application/json")) (generate-string (or body {}) {:escape-non-ascii true}) (or body ""))
-    :content_type (get (:result ctx) :content_type "application/json")
+    :body (if (= content-type "application/json") (generate-string (or (get-response-data result) {}) {:escape-non-ascii true}) 
+                                                  (or (get-response-data result) ""))
+    :content_type content-type
     :protocol {
-      :status_code (if (nil? (:is_raw (:result ctx))) 200 (get (:result ctx) :status 200))
-      :headers (gofmt-headers (-> (ctx :result) :headers))
+      :status_code (if (is-raw? result) (get (get-response result) :status 200) 200)
+      :headers (gofmt-headers (if (is-raw? result) (get (get-response result) :headers {}) {}))
     }
   }))
 
@@ -140,5 +141,5 @@
       fx (future (try (fn-entrypoint ctx (:data req)) (catch Exception e :exception)))
       res (deref fx ms :timeout)]
           (if (= res :exception) 
-            { :result (raw-response { :status 500 }) :request req :context ctx } 
-            { :result  (if (= res :timeout) (timeout fx req) res) :request req :context ctx })))
+            { :result (raw-response { :status 500 }) :request req } 
+            { :result  (if (= res :timeout) (timeout fx req) res) :request req })))
