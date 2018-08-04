@@ -67,13 +67,13 @@
   (:raw-response result))
 
 (defn get-response-data [result]
-  (or (:body (get-response result)) result))
+  (if (is-raw? result) (get (get-response result) :body {}) result))
 
 (defn result-cloudevent [ctx]
   (let [result (:result ctx)]
     (merge (:cloudevent (:request ctx)) {
       :contentType (if (is-raw? result) (get (:headers result) :content-type "application/json") "application/json")
-      :data (or (:body (get-response result)) {})
+      :data (or (get-response-data result) {})
       :extensions {
         :protocol {
           :status_code (if (is-raw? result) (get (get-response result) :status 200) 200)

@@ -349,3 +349,32 @@
                 :headers {}
                 }}}]
       (is (= r e)))))
+
+;;
+;;
+;;
+;; handle result, convenient return from handler function
+(defn handle-request-convenient-entrypoint [ctx body] body)
+
+(deftest handle-result-convenient-json
+  (with-redefs [env env-json]
+    (let [r (handle-result (handle-request { :data { :hi 1 } :deadline deadline } handle-request-convenient-entrypoint))
+          e { :content_type "application/json" 
+              :body "{\"hi\":1}"
+              :protocol {
+                :status_code 200
+                :headers {}
+                }}]
+      (is (= r e)))))
+
+(deftest handle-result-convenient-ce
+  (with-redefs [env env-cloudevent]
+    (let [r (handle-result (handle-request { :data { :hi 1 } :extensions { :deadline deadline } } handle-request-convenient-entrypoint))
+          e { :contentType "application/json" 
+              :data { :hi 1 }
+              :extensions {
+                :protocol {
+                :status_code 200
+                :headers {}
+                }}}]
+      (is (= r e)))))
