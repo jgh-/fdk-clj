@@ -37,6 +37,9 @@
             res (handle-result (handle-request inp func-entrypoint))]
         (println (generate-string res))))))
 
+(defn raw-response [response]
+  { :raw-response response })
+
 ;
 ;
 ;
@@ -57,25 +60,36 @@
 (defn gofmt-headers [headers]
   (reduce-kv (fn [a k v] (conj a { k (into [] (flatten [v])) })) {} headers))
 
+(defn is-raw? [result]
+  (not (nil? (:raw-response result))))
+
+(defn get-response [result]
+  (:raw-response result))
+
+(defn get-response-data [result]
+  (if (is-raw? result) (get (get-response result) :body {}) result))
+
 (defn result-cloudevent [ctx]
-  (merge (:cloudevent (:request ctx)) {
-    :contentType (get (:result ctx) :content_type "application/json")
-    :data (get (:result ctx) :body {})
-    :extensions {
-      :protocol {
-        :status_code (get (:result ctx) :status 200)
-        :headers (gofmt-headers (-> (ctx :result) :headers))
-      }}}))
+  (let [result (:result ctx)]
+    (merge (:cloudevent (:request ctx)) {
+      :contentType (if (is-raw? result) (get (:headers result) :content-type "application/json") "application/json")
+      :data (or (get-response-data result) {})
+      :extensions {
+        :protocol {
+          :status_code (if (is-raw? result) (get (get-response result) :status 200) 200)
+          :headers (gofmt-headers (if (is-raw? result) (get (get-response result) :headers {}) {}))
+        }}})))
 
 (defn result-json [ctx]
-  (let [body (:body (:result ctx))
-        content-type (:content_type (:result ctx))]
+  (let [result (:result ctx)
+        content-type (if (is-raw? result) (get (:headers (get-response result)) :content-type "application/json") "application/json")]
   {
-    :body (if (or (nil? content-type) (= content-type "application/json")) (generate-string body {:escape-non-ascii true}) body)
-    :content_type (get (:result ctx) :content_type "application/json")
+    :body (if (= content-type "application/json") (generate-string (or (get-response-data result) {}) {:escape-non-ascii true}) 
+                                                  (or (get-response-data result) ""))
+    :content_type content-type
     :protocol {
-      :status_code (get (:result ctx) :status 200)
-      :headers (gofmt-headers (-> (ctx :result) :headers))
+      :status_code (if (is-raw? result) (get (get-response result) :status 200) 200)
+      :headers (gofmt-headers (if (is-raw? result) (get (get-response result) :headers {}) {}))
     }
   }))
 
@@ -107,9 +121,9 @@
 
 (defn timeout [fx req]
   (future-cancel fx)
-  { :result {
+  { :result (raw-response {
     :status 408
-  } :request req })
+  }) :request req })
 
 (defn handle-request [req fn-entrypoint]
   (let [ctx (merge {
@@ -126,4 +140,6 @@
       ms (t/in-millis (t/interval (t/now) (f/parse (:deadline ctx))))
       fx (future (try (fn-entrypoint ctx (:data req)) (catch Exception e :exception)))
       res (deref fx ms :timeout)]
-          (if (= res :exception) { :result { :status 500 } :request req } { :result  (if (= res :timeout) (timeout fx req) res) :request req })))
+          (if (= res :exception) 
+            { :result (raw-response { :status 500 }) :request req } 
+            { :result  (if (= res :timeout) (timeout fx req) res) :request req })))

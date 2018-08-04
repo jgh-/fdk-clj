@@ -3,12 +3,7 @@
   (:gen-class))
 
 (defn handler [context data]
-  {
-    :status 200
-    :body body
-    :content_type (:content_type context)
-    :headers { "X-Request-Is-Fancy" "Very" }
-  })
+  data)
 
 (defn -main [& args]
   (fdk/handle handler))

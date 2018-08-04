@@ -12,7 +12,7 @@
   (let [f (future (Thread/sleep 1000))
        v (deref f 100 :timeout)]
        (is (= v :timeout))
-       (is (= (timeout f {}) { :result { :status 408 } :request {}}))
+       (is (= (timeout f {}) { :result { :raw-response { :status 408 }} :request {}}))
        (is (future-cancelled? f))))
 
 
@@ -22,6 +22,13 @@
   (is (= (gofmt-headers { :h1 "h1" :h2 "h2"}) { :h1 ["h1"] :h2 ["h2"] }))
   (is (= (gofmt-headers { :h1 ["h1"] :h2 ["h2"]}) { :h1 ["h1"] :h2 ["h2"] }))
   (is (= (gofmt-headers { "X-Different-Header" "h1" }) { "X-Different-Header" ["h1"]})))
+
+(deftest raw-response-test
+  (is (= {:raw-response { :hi 2 } } (raw-response { :hi 2 }))))
+
+(deftest israw-test
+  (is (= (is-raw? { :raw-response { :hi "ok"}}) true))
+  (is (= (is-raw? { :hi "ok"}) false)))
 
 (defonce test-env
   {
@@ -82,11 +89,11 @@
 ;; handle-result (json)
 (deftest handle-result-json
   (with-redefs [env test-env]
-    (let [v { :result {
+    (let [v { :result (raw-response {
       :body { :ok "ok" }
       :status 202
       :headers { :ok ["ok"] }
-      } }
+      }) }
       e {
         :content_type "application/json"
         :body "{\"ok\":\"ok\"}"
@@ -104,18 +111,19 @@
 ;; handle result (plaintext)
 (deftest handle-result-plain
   (with-redefs [env test-env]
-    (let [v { :result {
+    (let [v { :result (raw-response {
       :body "ok"
-      :content_type "text/plain"
       :status 202
-      :headers { :ok ["ok"] }
-      } }
+      :headers { 
+        :ok ["ok"] 
+        :content-type "text/plain"}
+      }) }
       e {
         :content_type "text/plain"
         :body "ok"
         :protocol {
           :status_code 202
-          :headers { :ok ["ok"] }
+          :headers { :ok ["ok"] :content-type ["text/plain"] }
         }
       }
       r (handle-result v)]
@@ -153,12 +161,12 @@
     }]
     (is (= e ctx))
     (is (= "hi" body))
-    {
+    (raw-response {
         :content_type "text/plain"
         :status 202
         :body "ok"
         :headers { :h "h" }
-    }))
+    })))
 
 (deftest handle-request-json
   (with-redefs [env env-json]
@@ -175,12 +183,12 @@
         :data "hi"
     }
     r (handle-request v handle-request-entrypoint-json)
-    e { :result {
+    e { :result { :raw-response {
       :status 202
       :body "ok"
       :content_type "text/plain"
       :headers { :h "h" }
-      } :request v }]
+      }} :request v }]
     (is (= r e)))))
 
 ;;
@@ -224,11 +232,11 @@
     }]
     (is (= e ctx))
     (is (= "hi" body))
-    {
+    (raw-response {
         :status 202
         :body { :ok "ok" }
         :headers { :h "h" }
-    }))
+    })))
 
 (deftest handle-request-cloudevent
   (with-redefs [env env-cloudevent]
@@ -246,11 +254,12 @@
         :data "hi"
     }
     r (handle-request v handle-request-entrypoint-cloudevent)
-    e { :result {
+    e { :result { :raw-response {
+      
       :status 202
       :body { :ok "ok" }
       :headers { :h "h" }
-      } :request v }]
+      } } :request v }]
     (is (= r e)))))
 
 ;;
@@ -259,11 +268,11 @@
 ;; handle-result (json, using cloudevent)
 (deftest handle-result-json-ce
   (with-redefs [env env-cloudevent]
-    (let [v { :result {
+    (let [v { :result (raw-response {
       :body { :ok "ok" }
       :status 202
       :headers { :ok "ok" }
-      } :request {
+      }) :request {
           :cloudevent {
             :eventID 1
             :contentType "text/plain"
@@ -309,4 +318,63 @@
                   :status_code 500
                   :headers {}
                   }}}]
+      (is (= r e)))))
+
+
+;;
+;;
+;;
+;; handle result, empty return from handler function
+(defn handle-request-empty-entrypoint [ctx body])
+
+(deftest handle-result-empty-json
+  (with-redefs [env env-json]
+    (let [r (handle-result (handle-request { :deadline deadline } handle-request-empty-entrypoint))
+          e { :content_type "application/json" 
+              :body "{}"
+              :protocol {
+                :status_code 200
+                :headers {}
+                }}]
+      (is (= r e)))))
+
+(deftest handle-result-empty-ce
+  (with-redefs [env env-cloudevent]
+    (let [r (handle-result (handle-request { :extensions { :deadline deadline } } handle-request-empty-entrypoint))
+          e { :contentType "application/json" 
+              :data {}
+              :extensions {
+                :protocol {
+                :status_code 200
+                :headers {}
+                }}}]
+      (is (= r e)))))
+
+;;
+;;
+;;
+;; handle result, convenient return from handler function
+(defn handle-request-convenient-entrypoint [ctx body] body)
+
+(deftest handle-result-convenient-json
+  (with-redefs [env env-json]
+    (let [r (handle-result (handle-request { :data { :hi 1 } :deadline deadline } handle-request-convenient-entrypoint))
+          e { :content_type "application/json" 
+              :body "{\"hi\":1}"
+              :protocol {
+                :status_code 200
+                :headers {}
+                }}]
+      (is (= r e)))))
+
+(deftest handle-result-convenient-ce
+  (with-redefs [env env-cloudevent]
+    (let [r (handle-result (handle-request { :data { :hi 1 } :extensions { :deadline deadline } } handle-request-convenient-entrypoint))
+          e { :contentType "application/json" 
+              :data { :hi 1 }
+              :extensions {
+                :protocol {
+                :status_code 200
+                :headers {}
+                }}}]
       (is (= r e)))))
