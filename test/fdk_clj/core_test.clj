@@ -12,7 +12,7 @@
   (let [f (future (Thread/sleep 1000))
        v (deref f 100 :timeout)]
        (is (= v :timeout))
-       (is (= (timeout f {}) { :result { :raw-response { :status 504 }} :request {}}))
+       (is (= (timeout f) { :raw-response { :status 504 } }))
        (is (future-cancelled? f))))
 
 
@@ -383,3 +383,14 @@
                 :headers {}
                 }}}]
       (is (= r e)))))
+
+;;
+;;
+;;
+;; call-handler with cancel
+(defn call-handler-timeout-handler [ctx body] (Thread/sleep 1000))
+
+(deftest call-handler-timeout
+  (let [r (call-handler call-handler-timeout-handler 
+                        {} { :deadline (f/unparse (f/formatters :date-time) (t/plus (t/now) (t/millis 100))) })]
+  (is (= r { :result { :raw-response { :status 504 } } :request {} }))))

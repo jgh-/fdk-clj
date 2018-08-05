@@ -61,21 +61,21 @@
 ;;
 ;; Handler functionality
 ;;
-(defn timeout [fx req]
-  (future-cancel fx)
-  { :result (raw-response {
-    :status 504
-  }) :request req })
+
+; Cancel a future and return 504 error
+(defn timeout [fut]
+  (future-cancel fut)
+  (raw-response { :status 504 }))
 
 ; Call the developer-provided handler.  If it throws an uncaught exception, return 500. If it runs past the deadline
 ; cancel it and throw a 504 Timed Out.
 (defn call-handler [handler req context]
   (let [ms (t/in-millis (t/interval (t/now) (f/parse (:deadline context))))
-        fx (future (try (handler context (:data req)) (catch Exception e :exception)))
-        res (deref fx ms :timeout)]
+        fut (future (try (handler context (:data req)) (catch Exception e :exception)))
+        res (deref fut ms :timeout)]
     { :request req 
       :result (cond (= res :exception) (raw-response { :status 500 })
-                    (= res :timeout) (timeout fx req)
+                    (= res :timeout) (timeout fut)
                     :else res) 
     }))
 

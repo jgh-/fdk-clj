@@ -1,4 +1,4 @@
-(defproject unpause/fdk-clj "1.0.5"
+(defproject unpause/fdk-clj "1.0.6"
   :description "Clojure FDK for Fn"
   :url "https://github.com/unpause-live/fdk-clj"
   :license {:name "Apache License Version 2.0"

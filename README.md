@@ -11,7 +11,7 @@ The Fn project is an open-source container-native serverless platform that you c
 
 #### Installation
 
-Add `[unpause/fdk-clj "1.0.5"]` to your dependencies.
+Add `[unpause/fdk-clj "1.0.6"]` to your dependencies.
 
 
 #### Usage
