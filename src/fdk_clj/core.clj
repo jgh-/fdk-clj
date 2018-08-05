@@ -73,9 +73,11 @@
   (let [ms (t/in-millis (t/interval (t/now) (f/parse (:deadline context))))
         fx (future (try (handler context (:data req)) (catch Exception e :exception)))
         res (deref fx ms :timeout)]
-    (if (= res :exception) 
-      { :result (raw-response { :status 500 }) :request req } 
-      { :result  (if (= res :timeout) (timeout fx req) res) :request req })))
+    { :request req 
+      :result (cond (= res :exception) (raw-response { :status 500 })
+                    (= res :timeout) (timeout fx req)
+                    :else res) 
+    }))
 
 ;;
 ;; Request Handling
