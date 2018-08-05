@@ -1,4 +1,4 @@
-(ns echo-test.core 
+(ns echo.core 
   (:require [fdk-clj.core :as fdk])
   (:gen-class))
 
