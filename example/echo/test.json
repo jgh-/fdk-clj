@@ -1,0 +1,29 @@
+{
+    "tests": [
+        {
+            "input": {
+                "body": {
+                    "name": "Johnny"
+                }
+            },
+            "output": {
+                "body": {
+                    "name": "Johnny"
+                }
+            }
+        },
+        {
+            "input": {
+                "body": {
+                    "another": "thing"
+                }
+            },
+            "output": {
+                "body": {
+                    "another": "thing"
+                }
+            }
+        }
+
+    ]
+}
