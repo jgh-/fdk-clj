@@ -12,7 +12,7 @@
   (let [f (future (Thread/sleep 1000))
        v (deref f 100 :timeout)]
        (is (= v :timeout))
-       (is (= (timeout f {}) { :result { :raw-response { :status 408 }} :request {}}))
+       (is (= (timeout f {}) { :result { :raw-response { :status 504 }} :request {}}))
        (is (future-cancelled? f))))
 
 
@@ -27,8 +27,8 @@
   (is (= {:raw-response { :hi 2 } } (raw-response { :hi 2 }))))
 
 (deftest israw-test
-  (is (= (is-raw? { :raw-response { :hi "ok"}}) true))
-  (is (= (is-raw? { :hi "ok"}) false)))
+  (is (= (raw? { :raw-response { :hi "ok"}}) true))
+  (is (= (raw? { :hi "ok"}) false)))
 
 (defonce test-env
   {
@@ -182,7 +182,7 @@
         :fn-type "sync"
         :data "hi"
     }
-    r (handle-request v handle-request-entrypoint-json)
+    r (call-handler handle-request-entrypoint-json v (handle-request v))
     e { :result { :raw-response {
       :status 202
       :body "ok"
@@ -253,7 +253,7 @@
         }
         :data "hi"
     }
-    r (handle-request v handle-request-entrypoint-cloudevent)
+    r (call-handler handle-request-entrypoint-cloudevent v (handle-request v))
     e { :result { :raw-response {
       
       :status 202
@@ -310,7 +310,8 @@
 
 (deftest handle-result-exception
   (with-redefs [env env-cloudevent]
-    (let [r (handle-result (handle-request { :extensions { :deadline deadline } } handle-request-entrypoint-exception))
+    (let [req { :extensions { :deadline deadline } }
+          r (handle-result (call-handler handle-request-entrypoint-exception req (handle-request req)))
           e { :contentType "application/json" 
               :data {}
               :extensions {
@@ -329,7 +330,8 @@
 
 (deftest handle-result-empty-json
   (with-redefs [env env-json]
-    (let [r (handle-result (handle-request { :deadline deadline } handle-request-empty-entrypoint))
+    (let [req { :deadline deadline }
+          r (handle-result (call-handler handle-request-empty-entrypoint req (handle-request req)))
           e { :content_type "application/json" 
               :body "{}"
               :protocol {
@@ -340,7 +342,8 @@
 
 (deftest handle-result-empty-ce
   (with-redefs [env env-cloudevent]
-    (let [r (handle-result (handle-request { :extensions { :deadline deadline } } handle-request-empty-entrypoint))
+    (let [req { :extensions { :deadline deadline } }
+          r (handle-result (call-handler handle-request-empty-entrypoint req (handle-request req)))
           e { :contentType "application/json" 
               :data {}
               :extensions {
@@ -358,7 +361,8 @@
 
 (deftest handle-result-convenient-json
   (with-redefs [env env-json]
-    (let [r (handle-result (handle-request { :data { :hi 1 } :deadline deadline } handle-request-convenient-entrypoint))
+    (let [req { :data { :hi 1 } :deadline deadline }
+          r (handle-result (call-handler handle-request-convenient-entrypoint req (handle-request req)))
           e { :content_type "application/json" 
               :body "{\"hi\":1}"
               :protocol {
@@ -369,7 +373,8 @@
 
 (deftest handle-result-convenient-ce
   (with-redefs [env env-cloudevent]
-    (let [r (handle-result (handle-request { :data { :hi 1 } :extensions { :deadline deadline } } handle-request-convenient-entrypoint))
+    (let [req { :data { :hi 1 } :extensions { :deadline deadline } }
+          r (handle-result (call-handler handle-request-convenient-entrypoint req (handle-request req)))
           e { :contentType "application/json" 
               :data { :hi 1 }
               :extensions {
