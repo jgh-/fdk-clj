@@ -11,22 +11,29 @@ The Fn project is an open-source container-native serverless platform that you c
 
 #### Installation
 
-Add `[unpause/fdk-clj "1.0.6"]` to your dependencies.
+Add to your dependencies:
+```clojure
+[unpause/fdk-clj "1.0.6"]
+```
 
 
 #### Usage
 
-Add `[fdk-clj.core :as fdk]` to the requirements list where your function's `main` entrypoint is.
+In your `ns` statement,
+```clojure
+(:require [fdk-clj.core :as fdk])
+```
 
 Create an function handler to be called when a new request is made:
 
-```
+```clojure
 (defn handler [context data]
   "hey")
 ```
 
 Or if you prefer to return a different format or add headers:
-```
+
+```clojure
 (defn handler [context data]
   ; stuff
   (fdk/raw-response {
@@ -40,14 +47,14 @@ Or if you prefer to return a different format or add headers:
 
 Create a `main` function like so:
 
-```
+```clojure
 (defn -main [& args]
   (fdk/handle handler))
 ```
 
 #### Context format
 
-```
+```clojure
  {
    :app_name "app"
    :app_route "/func"
