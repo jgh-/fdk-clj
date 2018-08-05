@@ -100,7 +100,7 @@
 ;
 ; See https://github.com/cloudevents/spec/blob/master/json-format.md
 ;
-(defn format-cloudevent [req]
+(defn request-cloudevent [req]
   {
     :call_id (-> req :eventID)
     :content_type (get req :contentType "application/cloudevents+json")
@@ -110,7 +110,7 @@
     :request_url (get (-> (req :extensions) :protocol) :request_url (str "http://localhost:8080/r/" (:app env) "/" (:path env)))
   })
 
-(defn format-json [req]
+(defn request-json [req]
   {
     :call_id (-> req :call_id)
     :content_type (get req :content_type "application/json")
@@ -134,8 +134,8 @@
           :execution_type (:type env)
           :arguments {}
         }
-        (cond (= (:fmt env) "json") (format-json req)
-              (= (:fmt env) "cloudevent") (format-cloudevent req)
+        (cond (= (:fmt env) "json") (request-json req)
+              (= (:fmt env) "cloudevent") (request-cloudevent req)
               :else (throw (AssertionError. "'json' and 'cloudevent' are the only supported formats"))))
       ms (t/in-millis (t/interval (t/now) (f/parse (:deadline ctx))))
       fx (future (try (fn-entrypoint ctx (:data req)) (catch Exception e :exception)))

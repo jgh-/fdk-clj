@@ -41,7 +41,7 @@
 
 ;;
 ;;
-;; format-cloudevent
+;; request-cloudevent
 (deftest fmt-cloudevent
   (with-redefs [env test-env]
     (let [v {
@@ -58,12 +58,12 @@
         :deadline "1"
         :cloudevent v
     }
-    r (format-cloudevent v)]
+    r (request-cloudevent v)]
     (is (= r e)))))
 
 ;;
 ;;
-;; format-json
+;; request-json
 (deftest fmt-json
   (with-redefs [env test-env]
     (let [v {
@@ -80,7 +80,7 @@
         :headers {}
         :request_url "http://localhost:8080/r/app/test/test"
     }
-    r (format-json v)]
+    r (request-json v)]
     (is (= r e)))))
 
 ;;
