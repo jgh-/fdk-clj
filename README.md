@@ -12,10 +12,7 @@ The Fn project is an open-source container-native serverless platform that you c
 #### Installation
 
 Add to your dependencies:
-```clojure
-[unpause/fdk-clj "1.0.6"]
-```
-
+[![Clojars Project](https://img.shields.io/clojars/v/unpause/fdk-clj.svg)](https://clojars.org/unpause/fdk-clj)
 
 #### Usage
 
