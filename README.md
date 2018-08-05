@@ -67,7 +67,7 @@ Create a `main` function like so:
    :deadline "2018-01-01T23:59:59.999"
    :content_type "application/json"
    :request_url "http://domain.com/r/app/func"
-   [optional] :cloudevent { event map } ;; only applies to CloudEvent Format
+   :cloudevent { event map } ;; [optional] only applies to CloudEvent Format
  }
 ```
 
