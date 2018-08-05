@@ -13,4 +13,4 @@ jobs:
       - run:
           name: test
           command: |
-            lein test
+            lein test-all
