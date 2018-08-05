@@ -17,4 +17,4 @@
                     :dependencies [[org.clojure/clojure "1.10.0-master-SNAPSHOT"]]}
             }
   :test-paths ["test"]
-  :aliases {"test-all" ["with-profile" "1.7,1.8,1.9,1.10" "test"]})
+  :aliases {"test-all" ["with-profile" "1.7:1.8:1.9:1.10" "test"]})
