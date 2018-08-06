@@ -56,6 +56,8 @@
     :config (System/getenv)
   })
 
+(defn raw? [result]
+  (not (nil? (:raw-response result))))
 
 ;;
 ;;
@@ -76,8 +78,8 @@
     { :request req 
       :result (cond (= res :exception) (raw-response { :status 500 })
                     (= res :timeout) (timeout fut)
-                    :else res) 
-    }))
+                    :else (if (raw? res) res (raw-response {:body (or res {})})))
+  }))
 
 ;;
 ;; Request Handling
@@ -132,40 +134,31 @@
 (defn gofmt-headers [headers]
   (reduce-kv (fn [a k v] (conj a { k (into [] (flatten [v])) })) {} headers))
 
-(defn raw? [result]
-  (not (nil? (:raw-response result))))
-
-(defn get-response [result]
-  (:raw-response result))
-
-(defn get-response-data [result]
-  (if (raw? result) (get (get-response result) :body {}) result))
-
 ;
 ; Format the result into a CloudEvents response
 (defn result-cloudevent [ctx]
-  (let [result (:result ctx)]
+  (let [result (:raw-response (:result ctx))]
     (merge (:cloudevent (:request ctx)) {
-      :contentType (if (raw? result) (get (:headers result) :content-type "application/json") "application/json")
-      :data (or (get-response-data result) {})
+      :contentType (get (:headers result) :content-type "application/json")
+      :data (get result :body {})
       :extensions {
         :protocol {
-          :status_code (if (raw? result) (get (get-response result) :status 200) 200)
-          :headers (gofmt-headers (if (raw? result) (get (get-response result) :headers {}) {}))
+          :status_code (get result :status 200)
+          :headers (gofmt-headers (get result :headers {}))
         }}})))
 
 ;
 ; Format the result into a JSON response
 (defn result-json [ctx]
-  (let [result (:result ctx)
-        content-type (if (raw? result) (get (:headers (get-response result)) :content-type "application/json") "application/json")]
+  (let [result (:raw-response (:result ctx))
+        content-type (get (:headers result) :content-type "application/json")]
   {
-    :body (if (= content-type "application/json") (generate-string (or (get-response-data result) {}) {:escape-non-ascii true}) 
-                                                  (or (get-response-data result) ""))
+    :body (if (= content-type "application/json") (generate-string (get result :body {}) {:escape-non-ascii true}) 
+                                                  (get result :body ""))
     :content_type content-type
     :protocol {
-      :status_code (if (raw? result) (get (get-response result) :status 200) 200)
-      :headers (gofmt-headers (if (raw? result) (get (get-response result) :headers {}) {}))
+      :status_code (get result :status 200)
+      :headers (gofmt-headers (get result :headers {}))
     }
   }))
 
