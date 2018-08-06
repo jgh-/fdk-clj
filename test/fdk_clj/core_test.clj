@@ -394,3 +394,16 @@
   (let [r (call-handler call-handler-timeout-handler 
                         {} { :deadline (f/unparse (f/formatters :date-time) (t/plus (t/now) (t/millis 100))) })]
   (is (= r { :result { :raw-response { :status 504 } } :request {} }))))
+
+;;
+;;
+;;
+;; handle result with text/plain and nil body
+
+(deftest handle-result-textplain-nil 
+  (with-redefs [env env-cloudevent] 
+    (let [r (handle-result {:result { :raw-response { :headers { :content-type "text/plain" } } } })]
+      (is (= r { :contentType "text/plain" :data {} :extensions { :protocol { :status_code 200 :headers { :content-type ["text/plain"]}}}}))))
+  (with-redefs [env env-json]
+    (let [r (handle-result {:result { :raw-response { :headers { :content-type "text/plain" } } } })]
+      (is (= r { :content_type "text/plain" :body ""  :protocol { :status_code 200 :headers { :content-type ["text/plain"]}}})))))
