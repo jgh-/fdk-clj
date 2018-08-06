@@ -47,6 +47,31 @@
     (let [v {
         :eventID 1
         :contentType "text/plain"
+        :extensions { 
+          :deadline "1" 
+          :protocol {
+            :request_url "http://test.com/r/thing/thing"
+            :headers { :extra ["hi"] }
+            } 
+          }
+        :data "hi"
+    }
+    e {
+        :request_url "http://test.com/r/thing/thing"
+        :headers { :extra ["hi"] }
+        :call_id 1
+        :content_type "text/plain"
+        :deadline "1"
+        :cloudevent v
+    }
+    r (request-cloudevent v)]
+    (is (= r e)))))
+
+(deftest fmt-cloudevent-default
+  (with-redefs [env test-env]
+    (let [v {
+        :eventID 1
+        :contentType "text/plain"
         :extensions { :deadline "1" }
         :data "hi"
     }
@@ -64,7 +89,7 @@
 ;;
 ;;
 ;; request-json
-(deftest fmt-json
+(deftest fmt-json-default
   (with-redefs [env test-env]
     (let [v {
         :call_id 1
@@ -79,6 +104,29 @@
         :deadline "1"
         :headers {}
         :request_url "http://localhost:8080/r/app/test/test"
+    }
+    r (request-json v)]
+    (is (= r e)))))
+
+(deftest fmt-json
+  (with-redefs [env test-env]
+    (let [v {
+        :call_id 1
+        :content_type "text/plain"
+        :deadline "1"
+        :fn-type "async"
+        :data "hi"
+        :protocol {
+          :request_url "http://test.com/r/thing/thing"
+          :headers { :extra ["hi"] }
+        } 
+    }
+    e {
+        :request_url "http://test.com/r/thing/thing"
+        :headers { :extra ["hi"] }
+        :call_id 1
+        :content_type "text/plain"
+        :deadline "1"
     }
     r (request-json v)]
     (is (= r e)))))
