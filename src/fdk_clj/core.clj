@@ -78,8 +78,8 @@
     { :request req 
       :result (cond (= res :exception) (raw-response { :status 500 })
                     (= res :timeout) (timeout fut)
-                    :else (if (raw? res) res (raw-response {:body (or res {})})))
-  }))
+                    :else (if (raw? res) res (raw-response (if (nil? res) {} { :body res }))))
+    }))
 
 ;;
 ;; Request Handling
